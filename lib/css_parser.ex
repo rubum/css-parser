@@ -17,7 +17,7 @@ defmodule CssParser do
   """
 
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
-  @font_case_regex ~r/(?<family>[\s\S]*?);(?<src>[\s\S]*);/i
+  # @font_case_regex ~r/(?<family>[\s\S]*?);(?<src>[\s\S]*);/i
   @comment_regx ~r/(\/+\s.*)|(\/\*[\s\S]*?\*\/)/
   # @combined_css_regex ~r/((\s*?(?:\/\*[\s\S]*?\*\/)?\s*?@media[\s\S]*?){([\s\S]*?)}\s*?})|(([\s\S]*?){([\s\S]*?)})/i
 
@@ -31,7 +31,7 @@ defmodule CssParser do
   def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
   def parse(csstring, opts) do
-    Keyword.get(opts, :source, :parent) |> IO.inspect()
+    Keyword.get(opts, :source, :parent)
     |> case do
       :parent -> String.split(csstring, ~r/\n\s*\}\n|\n\}\n/, trim: true)
       :child -> String.split(csstring, ~r/\n\}\n|\}/, trim: true)
@@ -47,13 +47,14 @@ defmodule CssParser do
     %{"selectors" => selectors} = css = Regex.named_captures(@css_regex, string)
 
     cond do
-      String.contains?(selectors, "@font-face") ->
+      selectors =~ "@font-face" ->
         {rules, css} = Map.pop(css, "rules")
 
-        Map.put(css, "type", "font-face")
-        |> Map.put("descriptors", Regex.named_captures(@font_case_regex, rules))
+        Map.put(css, "selectors",  String.trim(selectors))
+        |> Map.put("type", "font-face")
+        |> Map.put("descriptors", parse_fonts(rules))
 
-      String.contains?(selectors, "@media") ->
+      selectors =~ "@media" ->
         {rules, css} = Map.pop(css, "rules")
 
         Map.put(css, "selectors",  String.trim(selectors))
@@ -76,4 +77,16 @@ defmodule CssParser do
   end
 
   defp parse_rules(css), do: css
+
+  defp parse_fonts(rules) do
+    String.split(rules, ";", trim: true)
+    |> Enum.map(&:string.trim/1)
+    |> Enum.map(&:re.split(&1, ":", [:trim]))
+    |> Enum.map(&map_font/1)
+  end
+
+  defp map_font([key, value] = _rule) do
+    Map.put(%{}, "directive", :string.trim(key))
+    |> Map.put("value", :string.trim(value))
+  end
 end

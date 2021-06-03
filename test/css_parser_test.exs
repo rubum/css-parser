@@ -33,11 +33,13 @@ defmodule CssParserTest do
 
   @font-face {
     font-family: "SwitzeraADF";
-    src: url("SwitzeraADF-Regular.eot");
+    src
+    : url("SwitzeraADF-Regular.eot");
     src: url("SwitzeraADF-Regular.eot?#iefix") format("embedded-opentype"),
     url("SwitzeraADF-Regular.woff") format("woff"),
     url("SwitzeraADF-Regular.ttf") format("truetype"),
     url("SwitzeraADF-Regular.svg#switzera_adf_regular") format("svg");
+    unicode-range: U+590-5FF;
   }
 
   // let's say we're done
