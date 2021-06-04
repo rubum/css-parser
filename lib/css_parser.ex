@@ -5,10 +5,6 @@ defmodule CssParser do
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
   @comment_regx ~r/(\/*\*[\s\S]*?)/
 
-  defmacro __using__(_opts) do
-    quote(do: import CssParser)
-  end
-
   @moduledoc """
   Provides css parsing in Elixir.
 
@@ -32,13 +28,13 @@ defmodule CssParser do
     ###
 
   ### In a module
-    CssParser can be `use`d `import`ed or `alias`ed in a module:
+    CssParser can be `alias`ed or `import`ed in a module:
     ```elixir
     defmodule MyMod do
-      use CssParser
+      import CssParser
 
       def my_css_parser(css_string) do
-        # use the injected `parse` function
+        # use the imported `parse` function
         parse(css_string)
       end
     end
