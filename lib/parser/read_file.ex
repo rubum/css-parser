@@ -1,6 +1,6 @@
 defmodule CssParser.File  do
   @moduledoc """
-   Read css from a file and parse
+   File reading helper for css parsing.
   """
 
   defmodule NotFoundException do
@@ -14,7 +14,7 @@ defmodule CssParser.File  do
     rescue
       File.Error ->
         raise NotFoundException,
-        message: "File at path #{path} not found"
+        message: "File #{path} not found."
     end
   end
 end
