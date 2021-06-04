@@ -73,10 +73,13 @@ defmodule CssParser do
 
       iex> CssParser.parse("/path/to/css/file", source: :file)
 
+    In case the file doesn't exist it returns:
+      ` [:error, "File /path/to/css/file not found."]`
+
     ###
   """
 
-  @spec parse(String.t(), [source: :file | :parent | :child]) :: [Map.t()]
+  @spec parse(String.t(), [source: :file | :parent | :child]) :: [Map.t()] | [{:error, String.t()}]
   def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
   def parse(csstring, opts) do

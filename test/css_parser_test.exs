@@ -62,9 +62,8 @@ defmodule CssParserTest do
     end
 
     test "reads file and parses if of valid source" do
-      assert_raise CssParser.File.NotFoundException, fn ->
-        CssParser.parse("invalid/css/file/path", source: :file)
-      end
+      assert CssParser.parse("invalid/css/file/path", source: :file) ==
+        [error: "File invalid/css/file/path not found."]
 
       assert :ok = File.write("/tmp/testing.css", @css)
 
