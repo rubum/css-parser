@@ -1,9 +1,7 @@
 defmodule CssParser do
 
   import CssParser.File
-
-  @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
-  @comment_regx ~r/(\/*\*[\s\S]*?)/
+  alias CssParser.Cache
 
   @moduledoc """
   Provides css parsing in Elixir.
@@ -79,14 +77,26 @@ defmodule CssParser do
     ###
   """
 
-  @spec parse(String.t(), [source: :file | :parent | :child]) :: [Map.t()] | [{:error, String.t()}]
-  def parse(csstring, opts \\ [])
+  @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
+  @comment_regx ~r/(\/*\*[\s\S]*?)/
+
+  @type source :: :file | :parent | :child
+
+  @spec parse(String.t(), [source: source]) :: [Map.t()] | [{:error, String.t()}]
+  def parse(csstring, opts \\ [source: :parent])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
   def parse(csstring, opts) do
-    csstring
-    |> drop_comments(opts)
-    |> Enum.map(&parse_css/1)
-    |> Enum.map(&parse_rules/1)
+    # try getting data from cache else initiliaze it
+    hash_key = Cache.hash(csstring)
+
+    case Cache.get(hash_key) do
+      {:ok, data} -> data
+      {:error, _} ->
+        drop_comments(csstring, opts)
+        |> Enum.map(&parse_css/1)
+        |> Enum.map(&parse_rules/1)
+        |> Cache.save(hash_key, returning: true)
+    end
   end
 
   defp drop_comments(css_string, opts) do
