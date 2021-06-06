@@ -43,8 +43,7 @@ defmodule CssParser.MixProject do
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @source_url},
       files:
-        ~w(.formatter.exs mix.exs README.md lib test) ++
-        ~w(priv mix.exs README* readme* LICENSE* license* CHANGELOG* changelog* src),
+        ~w(.formatter.exs mix.exs README.md LICENSE.md lib test),
     ]
   end
   
