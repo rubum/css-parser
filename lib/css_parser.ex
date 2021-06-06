@@ -8,7 +8,22 @@ defmodule CssParser do
   CssParser is based on css.js (a lightweight, battle tested, fast, css parser in JavaScript)
   and implemented for Elixir. More information can be found at https://github.com/jotform/css.js.
 
-  ### On command line
+  ### Adding CssParser
+
+  To add CssParser to an application, add it to `deps` in the mix.exs file:
+
+  ```elixir
+    defp deps do
+    [
+      {:css_parser, ">= 0.1.0"}
+    ]
+  end
+  ```
+
+  ### Usage
+  You can use CssParser either on a command line or a module.
+
+  #### On command line
       iex> CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
       [
         %{
@@ -22,9 +37,7 @@ defmodule CssParser do
 
       iex> CssParser.parse("/path/to/css/file", source: :file)
 
-    ###
-
-  ### In a module
+  #### In a module
     CssParser can be `alias`ed or `import`ed in a module:
     ```elixir
     defmodule MyMod do
@@ -36,7 +49,6 @@ defmodule CssParser do
       end
     end
     ```
-    ###
   """
 
   @doc """
@@ -71,9 +83,8 @@ defmodule CssParser do
       iex> CssParser.parse("/path/to/css/file", source: :file)
 
     In case the file doesn't exist it returns:
-      ` [:error, "File /path/to/css/file not found."]`
+      `[:error, "File /path/to/css/file not found."]`
 
-    ###
   """
 
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i

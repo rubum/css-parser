@@ -1,6 +1,6 @@
 defmodule CssParser.MixProject do
   use Mix.Project
-  
+
   @source_url "https://github.com/rubum/css-parser"
   @version "0.1.0"
 
@@ -11,7 +11,7 @@ defmodule CssParser.MixProject do
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      
+
       # Hex
       description: "Provides css parsing in Elixir",
       package: package(),
@@ -35,7 +35,7 @@ defmodule CssParser.MixProject do
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
-  
+
   defp package do
     [
       maintainers: ["Kenneth Mburu"],
@@ -45,12 +45,12 @@ defmodule CssParser.MixProject do
         ~w(.formatter.exs mix.exs README.md LICENSE.md lib test),
     ]
   end
-  
+
   defp docs do
     [
       main: "CssParser",
-      source_ref: "v#{@version}",
+      # source_ref: "v#{@version}",
       source_url: @source_url
     ]
-  end 
+  end
 end
