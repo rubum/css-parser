@@ -78,12 +78,10 @@ defmodule CssParser do
   """
 
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
-  @comment_regx ~r/(\/*\*[\s\S]*?)/
+  @comment_regx ~r/(\/*\*[\s\S]*?\*?\/*)|(\/\*.*?\*\/)/
 
-  @type source :: :file | :parent | :child
-
-  @spec parse(String.t(), [source: source]) :: [Map.t()] | [{:error, String.t()}]
-  def parse(csstring, opts \\ [source: :parent])
+  @spec parse(String.t(), [source: :file | :parent | :child]) :: [Map.t()] | [{:error, String.t()}]
+  def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
   def parse(csstring, opts) do
     # try getting data from cache else initiliaze it
@@ -100,15 +98,27 @@ defmodule CssParser do
   end
 
   defp drop_comments(css_string, opts) do
-    string =
-      String.split(css_string, "\n", trim: true)
-      |> Enum.reject(&Regex.match?(@comment_regx, &1))
-      |> Enum.join()
+    css_lines = String.split(css_string, "\n", trim: true)
+
+    to_parse =
+      Enum.reduce(css_lines, [], fn line, acc ->
+        string =
+          if Regex.match?(@comment_regx, line) do
+            String.split(line, @comment_regx, trim: true)
+            |> Enum.reject(&Regex.match?(~r/^[\s\S](?![\s\S]*\{)/, &1))
+          else
+            line
+          end
+
+        [string | acc]
+      end)
+      |> Enum.reverse()
+      |> Enum.join
 
     case Keyword.get(opts, :source, :parent) do
-      :parent -> String.split(string, ~r/\s*\}\s*|\s*\}\s/, trim: true)
-      :child -> String.split(string, ~r/\s*\}\s*|\}/, trim: true)
-      :file -> parse_from_file(string)
+      :parent -> String.split(to_parse, ~r/\s*\}\s*|\s*\}\s/, trim: true)
+      :child -> String.split(to_parse, ~r/\s*\}\s*|\}/, trim: true)
+      :file -> parse_from_file(to_parse)
     end
   end
 

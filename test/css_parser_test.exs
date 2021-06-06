@@ -2,6 +2,7 @@ defmodule CssParserTest do
   use ExUnit.Case
   # doctest CssParser
   @css """
+  /* first comment */  p {font-weight: bold;}  /* second comment */
   /*
   * comment one here
   */
@@ -44,6 +45,14 @@ defmodule CssParserTest do
   @css1 "/* comment here */\n  h1, h4\n{color: red;\nfont-size: 25px;\n}"
 
   describe "css parsing" do
+    test "removes comments" do
+      assert(
+        "/* first comment */ p {font-weight: bold;} /* second comment */"
+        |> CssParser.parse()
+        |> Kernel.==([%{"rules" => "font-weight: bold;", "selectors" => "p", "type" => "rules"}])
+      )
+    end
+
     test "returns rules, selectors and type" do
       [map_result] = result = CssParser.parse(@css1)
       assert is_list(result)
