@@ -64,7 +64,7 @@ defmodule CssParserTest do
     test "returns font-face type with descriptors" do
       font_faces =
         CssParser.parse(@css)
-        |> Enum.filter(&Map.get(&1, "type") =~ "font")
+        |> Enum.filter(&(Map.get(&1, "type") =~ "font"))
 
       assert length(font_faces) == 2
       assert [%{"descriptors" => _, "type" => "font-face"}, _] = font_faces
@@ -72,21 +72,22 @@ defmodule CssParserTest do
 
     test "reads file and parses if of valid source" do
       assert CssParser.parse("invalid/css/file/path", source: :file) ==
-        [error: "File invalid/css/file/path not found."]
+               [error: "File invalid/css/file/path not found."]
 
       assert :ok = File.write("/tmp/testing.css", @css)
 
       media_rules =
         CssParser.parse("/tmp/testing.css", source: :file)
-        |> Enum.find(&Map.get(&1, "type") =~ "media")
+        |> Enum.find(&(Map.get(&1, "type") =~ "media"))
 
       assert media_rules ==
-        %{"children" => [
-          %{"rules" => "display: none;", "selectors" => ".sidebar", "type" => "rules"}
-          ],
-          "selectors" => "@media (max-width: 600px)",
-          "type" => "media"
-        }
+               %{
+                 "children" => [
+                   %{"rules" => "display: none;", "selectors" => ".sidebar", "type" => "rules"}
+                 ],
+                 "selectors" => "@media (max-width: 600px)",
+                 "type" => "media"
+               }
 
       on_exit(fn -> File.rm!("/tmp/testing.css") end)
     end

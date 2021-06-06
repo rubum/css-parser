@@ -1,5 +1,4 @@
 defmodule CssParser.Cache do
-
   @moduledoc """
   Caching for parsed css
   """

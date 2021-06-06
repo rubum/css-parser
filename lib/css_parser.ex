@@ -1,5 +1,4 @@
 defmodule CssParser do
-
   import CssParser.File
   alias CssParser.Cache
 
@@ -80,15 +79,18 @@ defmodule CssParser do
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
   @comment_regx ~r/(\/*\*[\s\S]*?\*?\/*)|(\/\*.*?\*\/)/
 
-  @spec parse(String.t(), [source: :file | :parent | :child]) :: [Map.t()] | [{:error, String.t()}]
+  @spec parse(String.t(), source: :file | :parent | :child) :: [Map.t()] | [{:error, String.t()}]
   def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
+
   def parse(csstring, opts) do
     # try getting data from cache else initiliaze it
     hash_key = Cache.hash(csstring)
 
     case Cache.get(hash_key) do
-      {:ok, data} -> data
+      {:ok, data} ->
+        data
+
       {:error, _} ->
         drop_comments(csstring, opts)
         |> Enum.map(&parse_css/1)
@@ -113,7 +115,7 @@ defmodule CssParser do
         [string | acc]
       end)
       |> Enum.reverse()
-      |> Enum.join
+      |> Enum.join()
 
     case Keyword.get(opts, :source, :parent) do
       :parent -> String.split(to_parse, ~r/\s*\}\s*|\s*\}\s/, trim: true)
@@ -123,22 +125,25 @@ defmodule CssParser do
   end
 
   defp parse_css(string) when not is_binary(string), do: string
+
   defp parse_css(string) do
     case Regex.named_captures(@css_regex, string) do
-      nil -> string
+      nil ->
+        string
+
       %{"selectors" => selectors} = css ->
         cond do
           selectors =~ "@font-face" ->
             {rules, css} = Map.pop(css, "rules")
 
-            Map.put(css, "selectors",  String.trim(selectors))
+            Map.put(css, "selectors", String.trim(selectors))
             |> Map.put("type", "font-face")
             |> Map.put("descriptors", parse_fonts(rules))
 
           selectors =~ "@media" ->
             {rules, css} = Map.pop(css, "rules")
 
-            Map.put(css, "selectors",  String.trim(selectors))
+            Map.put(css, "selectors", String.trim(selectors))
             |> Map.put("type", "media")
             |> Map.put("children", parse(rules, source: :child))
 
@@ -153,7 +158,7 @@ defmodule CssParser do
     parsed_rules =
       String.trim(rules)
       |> String.split("\n", trim: true)
-      |> Enum.join
+      |> Enum.join()
 
     Map.put(css, "rules", parsed_rules)
   end
