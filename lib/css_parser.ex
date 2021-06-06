@@ -79,7 +79,7 @@ defmodule CssParser do
   @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
   @comment_regx ~r/(\/*\*[\s\S]*?\*?\/*)|(\/\*.*?\*\/)/
 
-  @spec parse(String.t(), source: :file | :parent | :child) :: [Map.t()] | [{:error, String.t()}]
+  @spec parse(String.t(), source: :file | :parent | :child) :: [term()] | [{:error, String.t()}]
   def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
 
