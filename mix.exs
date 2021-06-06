@@ -10,7 +10,7 @@ defmodule CssParser.MixProject do
       version: @version,
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
       
       # Hex
       description: "Provides css parsing in Elixir",
