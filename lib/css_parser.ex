@@ -53,16 +53,7 @@ defmodule CssParser do
 
   @doc """
   Parses a css string to produce selectors, rules/descriptors and types.
-  It first tries to remove comments that are of the form:
-    ```css
-    /* comment */
-    ```
-  or:
-    ```css
-    /*
-    * other comment here
-    */
-    ```
+  It first tries to remove css comments that might be in the css string.
 
   ### Options
       * `source: :file` - when set specifies the source of the css to be a file in the given string.
@@ -189,6 +180,14 @@ defmodule CssParser do
 
   @doc """
   Converts a parsed css to binary
+
+  #### After running:
+      iex> parsed = CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
+
+  #### You can then run:
+      iex> CssParser.to_binary(parsed)
+  This reverts/converts the previous parsed css to binary.
+  #### The function is especially useful if you need to modify the parsed css structure and then get back a binary.
   """
   def to_binary(parsed_css) do
     Enum.reduce(parsed_css, [], fn  %{"type" => type, "selectors" => s} = parsed, acc ->
