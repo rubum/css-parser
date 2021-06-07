@@ -194,7 +194,7 @@ defmodule CssParser do
     Enum.reduce(parsed_css, [], fn  %{"type" => type, "selectors" => s} = parsed, acc ->
       case type do
         "rules" ->
-          str = IO.iodata_to_binary([s, " {\n", parsed["rules"], "\n}", line_break()])
+          str = IO.iodata_to_binary([s, " {\n\t", parsed["rules"], "\n}", line_break()])
           [str | acc]
 
         "font-face" ->
@@ -203,7 +203,7 @@ defmodule CssParser do
           [str | acc]
 
         "media" ->
-          children = insert_children(parsed["children"])
+          children = insert_media_children(parsed["children"])
           str = IO.iodata_to_binary([s, " {\n", children, "\n}", line_break()])
           [str | acc]
       end
@@ -213,25 +213,21 @@ defmodule CssParser do
   end
 
   defp insert_font_face(descriptors) do
-    # use reduce_while
     Enum.map(descriptors, fn descriptor  ->
       key = :maps.keys(descriptor) |> hd
       value = :maps.values(descriptor) |> hd
 
-      IO.iodata_to_binary([key, ": ", value, ";", "\n"])
+      IO.iodata_to_binary(["\t", key, ": ", value, ";", "\n"])
     end)
   end
 
-  defp insert_children(rules) do
+  defp insert_media_children(rules) do
     Enum.map(rules, fn %{"rules" => r, "selectors" => s} ->
-      IO.iodata_to_binary([s, " {\n", r, "\n}"])
+      IO.iodata_to_binary(["\t", s, " {\n\t\t", r, "\n\t}"])
     end)
   end
 
   defp line_break() do
-    case :os.type() do
-      {:win32, _} -> "\r\n"
-      _unixes-> "\n"
-    end
+    if :os.type() == {:win32, :nt} , do: "\r\n", else: "\n"
   end
 end
