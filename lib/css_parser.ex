@@ -188,9 +188,9 @@ defmodule CssParser do
   end
 
   @doc """
-  Reverts the parsed css to binary
+  Converts a parsed css to binary
   """
-  def revert(parsed_css) do
+  def to_binary(parsed_css) do
     Enum.reduce(parsed_css, [], fn  %{"type" => type, "selectors" => s} = parsed, acc ->
       case type do
         "rules" ->
