@@ -138,31 +138,30 @@ defmodule CssParser do
           selectors =~ "@font-face" ->
             {rules, css} = Map.pop(css, "rules")
 
-            Map.put(css, "selectors", String.trim(selectors))
-            |> Map.put("type", "font-face")
-            |> Map.put("descriptors", parse_fonts(rules))
+            Map.put(css, :selectors, String.trim(selectors))
+            |> Map.put(:type, "font-face")
+            |> Map.put(:descriptors, parse_fonts(rules))
+            |> Map.drop(["selectors"])
 
           selectors =~ "@media" ->
             {rules, css} = Map.pop(css, "rules")
 
-            Map.put(css, "selectors", String.trim(selectors))
-            |> Map.put("type", "media")
-            |> Map.put("children", parse(rules, source: :child))
+            Map.put(css, :selectors, String.trim(selectors))
+            |> Map.put(:type, "media")
+            |> Map.put(:children, parse(rules, source: :child))
+            |> Map.drop(["selectors"])
 
           true ->
-            Map.put(css, "selectors", String.trim(selectors))
-            |> Map.put("type", "rules")
+            css |> Map.put(:selectors, selectors)
+            |> Map.put(:type, "rules")
+            |> Map.drop(["selectors"])
         end
     end
   end
 
   defp parse_rules(%{"rules" => rules} = css) do
-    parsed_rules =
-      String.trim(rules)
-      |> String.split("\n", trim: true)
-      |> Enum.join()
-
-    Map.put(css, "rules", parsed_rules)
+    Map.put(css, :rules, String.split(rules, "  ") |> Enum.join("\t"))
+    |> Map.drop(["selectors", "rules"])
   end
 
   defp parse_rules(css), do: css
@@ -190,20 +189,20 @@ defmodule CssParser do
   #### The function is especially useful if you need to modify the parsed css structure and then get back a binary.
   """
   def to_binary(parsed_css) do
-    Enum.reduce(parsed_css, [], fn  %{"type" => type, "selectors" => s} = parsed, acc ->
+    Enum.reduce(parsed_css, [], fn  %{type: type, selectors: s} = parsed, acc ->
       case type do
         "rules" ->
-          str = IO.iodata_to_binary([s, " {", parsed["rules"], "}", line_break()])
+          str = IO.iodata_to_binary([s, " {\t", parsed.rules, "\r}\n\n"])
           [str | acc]
 
         "font-face" ->
-          descriptors = insert_font_face(parsed["descriptors"])
-          str = IO.iodata_to_binary([s, " {", descriptors, "}", line_break()])
+          descriptors = insert_font_face(parsed.descriptors)
+          str = IO.iodata_to_binary([s, " {\t", descriptors, " \r}\n\n"])
           [str | acc]
 
         "media" ->
-          children = insert_media_children(parsed["children"])
-          str = IO.iodata_to_binary([s, " {", children, "}", line_break()])
+          children = insert_media_children(parsed.children)
+          str = IO.iodata_to_binary([s, " {\t", children, " \r}\n\n"])
           [str | acc]
       end
     end)
@@ -221,12 +220,8 @@ defmodule CssParser do
   end
 
   defp insert_media_children(rules) do
-    Enum.map(rules, fn %{"rules" => r, "selectors" => s} ->
-      IO.iodata_to_binary([s, " {", r, "}"])
+    Enum.map(rules, fn %{rules: r, selectors: s} ->
+      IO.iodata_to_binary(["\r\t", s, " {\t", r, "\r\t}"])
     end)
-  end
-
-  defp line_break() do
-    if :os.type() == {:win32, :nt} , do: "\r\n", else: "\n"
   end
 end
