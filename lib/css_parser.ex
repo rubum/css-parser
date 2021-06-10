@@ -78,10 +78,13 @@ defmodule CssParser do
 
   """
 
-  @css_regex ~r/(?<selectors>[\s\S]*?){(?<rules>[\s\S]*)/i
-  @comment_regx ~r/(\/*\*[\s\S]*?\*?\/*)|(\/\*.*?\*\/)/
+  @font_regex ~r/((?=@font-face)(.*?)(\s*\}))/s
+  @media_regex ~r/((?=@media)(.*?)(\s*\}){2})/s
+  @comment_regx ~r/(\/\*.*?\*\/)/ #~r/(\/*\*[\s\S]*?\*?\/*)|(\/\*.*?\*\/)/
+  @keyframe_regex ~r/(\s*(?=\@keyframes|@-webkit-keyframes)(.*?)(\s*\}){2}\s*)+/s
+  @element_regex ~r/(?=@media|@keyframe|@-webkit-keyframes|@font-face)(.*?)(\s*\}){2}\s*/s
 
-  @spec parse(String.t(), source: :file | :parent | :child) :: [term()] | [{:error, String.t()}]
+  @spec parse(String.t(), source: :file) :: [term()] | [{:error, String.t()}]
   def parse(csstring, opts \\ [])
   def parse(csstring, _opts) when csstring in ["", nil], do: []
 
@@ -94,89 +97,89 @@ defmodule CssParser do
         data
 
       {:error, _} ->
-        drop_comments(csstring, opts)
-        |> Enum.map(&parse_css/1)
-        |> Enum.map(&parse_rules/1)
+        csstring
+        |> drop_comments(opts)
+        |> parse_css()
         |> Cache.save(hash_key, returning: true)
     end
   end
 
-  defp drop_comments(css_string, opts) do
-    css_lines = String.split(css_string, "\n", trim: true)
-
-    to_parse =
-      Enum.reduce(css_lines, [], fn line, acc ->
-        string =
-          if Regex.match?(@comment_regx, line) do
-            String.split(line, @comment_regx, trim: true)
-            |> Enum.reject(&Regex.match?(~r/^[\s\S](?![\s\S]*\{)/, &1))
-          else
-            line
-          end
-
-        [string | acc]
-      end)
-      |> Enum.reverse()
-      |> Enum.join()
-
-    case Keyword.get(opts, :source, :parent) do
-      :parent -> String.split(to_parse, ~r/\s*\}\s*|\s*\}\s/, trim: true)
-      :child -> String.split(to_parse, ~r/\s*\}\s*|\}/, trim: true)
-      :file -> parse_from_file(to_parse)
-    end
-  end
-
-  defp parse_css(string) when not is_binary(string), do: string
-
-  defp parse_css(string) do
-    case Regex.named_captures(@css_regex, string) do
-      nil ->
-        string
-
-      %{"selectors" => selectors} = css ->
-        cond do
-          selectors =~ "@font-face" ->
-            {rules, css} = Map.pop(css, "rules")
-
-            Map.put(css, :selectors, String.trim(selectors))
-            |> Map.put(:type, "font-face")
-            |> Map.put(:descriptors, parse_fonts(rules))
-            |> Map.drop(["selectors"])
-
-          selectors =~ "@media" ->
-            {rules, css} = Map.pop(css, "rules")
-
-            Map.put(css, :selectors, String.trim(selectors))
-            |> Map.put(:type, "media")
-            |> Map.put(:children, parse(rules, source: :child))
-            |> Map.drop(["selectors"])
-
-          true ->
-            css |> Map.put(:selectors, selectors)
-            |> Map.put(:type, "rules")
-            |> Map.drop(["selectors"])
+  # tries to drop existing comments
+  defp drop_comments(css_string, _opts) do
+    String.split(css_string, "\n", trim: true)
+    |> Enum.reduce([], fn line, acc ->
+      str =
+        if Regex.match?(@comment_regx, line) do
+          String.replace(line, @comment_regx, "")
+        else
+          line
         end
+
+      [ str | acc ]
+    end)
+    |> Enum.reverse()
+    |> Enum.join()
+  end
+
+  # tokenizes css string into the various css selectors e.g. @media, @font-face, @keyframes and elements
+  def parse_css(css) do
+    media =
+      Regex.scan(@media_regex, css)
+      |> Enum.map(fn media ->
+        %{"selector" => selector, "children" => children} =
+          Regex.named_captures(~r/(?<selector>(@media)(.*?)(\)))(?<children>.*)/s, hd(media))
+        %{selectors: selector, children: parse_elements(children, :children), type: "media"}
+      end)
+
+    keyframes =
+      Regex.scan(@keyframe_regex, css)
+      |> Enum.map(fn keyframe ->
+        [name | block] = String.split(hd(keyframe), ~r/(?={)/s, trim: true)
+        %{selectors: name, rules: block, type: "keyframe"}
+      end)
+
+    font_faces =
+      Regex.scan(@font_regex, css)
+      |> Enum.map(fn font_face ->
+        [name, descriptors] = String.split(hd(font_face), ~r/({)/s, trim: true)
+        %{selectors: name, descriptors: descriptors, type: "font_face"}
+      end)
+
+    parse_elements(css, :root) ++ media ++ keyframes ++ font_faces
+  end
+
+  defp parse_elements(css, type) do
+    # strip media-queries, keyframes and font-faces
+    case type do
+      :root ->
+        String.split(css, @element_regex, trim: true)
+        # |> IO.inspect()
+        |> Enum.flat_map(fn rule ->
+            Enum.map(String.split(rule, ~r/\s*\}\s*/, trim: true), fn rule ->
+              do_parse_element(rule)
+            end)
+        end)
+
+      :children ->
+        Enum.map(String.split(css, ~r/\s*\}\s*/, trim: true), fn rule ->
+          do_parse_element(rule)
+        end)
+    end
+    # remove empty items
+    |> Enum.reject(& &1 ==  %{})
+  end
+
+  defp do_parse_element(el) do
+    case String.split(el, ~r/\s*\{\s*/, trim: true) do
+      [r | []] when r in ["", " ", "  ", "   ", "    ", nil] -> %{}
+      [selectors, rules] ->
+        %{type: "elements", selectors: selectors, rules: rules}
+      [universal_rules] ->
+        %{type: "universal", selectors: "*", rules: universal_rules}
     end
   end
 
-  defp parse_rules(%{"rules" => rules} = css) do
-    Map.put(css, :rules, String.split(rules, "  ") |> Enum.join("\t"))
-    |> Map.drop(["selectors", "rules"])
-  end
-
-  defp parse_rules(css), do: css
-
-  defp parse_fonts(rules) do
-    String.split(rules, ";", trim: true)
-    |> Enum.map(&:string.trim/1)
-    |> Enum.map(&:re.split(&1, ":", [:trim]))
-    |> Enum.map(&map_font/1)
-  end
-
-  defp map_font([key, value] = _rule) do
-    Map.put(%{}, :string.trim(key), :string.trim(value))
-  end
-
+  @spec to_binary(any) :: binary
   @doc """
   Converts a parsed css to binary
 
@@ -191,18 +194,23 @@ defmodule CssParser do
   def to_binary(parsed_css) do
     Enum.reduce(parsed_css, [], fn  %{type: type, selectors: s} = parsed, acc ->
       case type do
-        "rules" ->
-          str = IO.iodata_to_binary([s, " {\t", parsed.rules, "\r}\n\n"])
+        "elements" ->
+          str = IO.iodata_to_binary([s, " {\n\t", parsed.rules, "\r}\n\n"])
           [str | acc]
 
-        "font-face" ->
-          descriptors = insert_font_face(parsed.descriptors)
-          str = IO.iodata_to_binary([s, " {\t", descriptors, " \r}\n\n"])
-          [str | acc]
+        "keyframe" -> [ IO.iodata_to_binary([s, parsed.rules, "\n\n"]) | acc ]
 
         "media" ->
           children = insert_media_children(parsed.children)
           str = IO.iodata_to_binary([s, " {\t", children, " \r}\n\n"])
+          [str | acc]
+
+        "font_face" ->
+          str = IO.iodata_to_binary([s, " {\t", parsed.descriptors, "\n\n"])
+          [str | acc]
+
+        "universal" ->
+          str = IO.iodata_to_binary([s, " {\t", parsed.rules, "\r}\n\n"])
           [str | acc]
       end
     end)
@@ -210,18 +218,9 @@ defmodule CssParser do
     |> IO.iodata_to_binary()
   end
 
-  defp insert_font_face(descriptors) do
-    Enum.map(descriptors, fn descriptor  ->
-      key = :maps.keys(descriptor) |> hd
-      value = :maps.values(descriptor) |> hd
-
-      IO.iodata_to_binary([key, ": ", value, ";", "\n"])
-    end)
-  end
-
   defp insert_media_children(rules) do
     Enum.map(rules, fn %{rules: r, selectors: s} ->
-      IO.iodata_to_binary(["\r\t", s, " {\t", r, "\r\t}"])
+      IO.iodata_to_binary(["\r\t", s, " {\n\t\t", r, "\r\t}"])
     end)
   end
 end
