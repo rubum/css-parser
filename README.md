@@ -6,12 +6,12 @@ An example follows below:
 ```elixir
 iex> CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
      [
-       %{
-         "rules" => "color: blue; font-size: 20px;",
-         "selectors" => "h4, h3",
-         "type" => "rules"
-       }
-     ]
+      %{
+        rules: "color: blue; font-size: 20px;",
+        selectors: "h4, h3",
+        type: "elements"
+      }
+    ]
 ```
 
 CssParser can even remove comments from a css string, as below:
@@ -20,21 +20,21 @@ CssParser can even remove comments from a css string, as below:
 iex> CssParser.parse("/* first comment */ p {font-weight: bold;} /* second comment */")
      [
       %{
-        "rules" => "font-weight: bold;", "selectors" => "p", "type" => "rules"
+        rules: "font-weight: bold;", selectors: " p", type: "rules"
        }
      ]
 ```
 
-If you have a file with css, CssParser can parse it as long as you tell it by passing option `source: :file`:
+If you have a file with css, CssParser can parse it as long as it's a valid source:
 
 ```elixir
-iex> CssParser.parse("/some/file/with.css", source: :file)
+iex> CssParser.parse("/some/file/with.css")
 ```
-In case the passed css file doesn't exist, you get the following result:
+In case the passed css file isn't valid, you get the following result:
 
 ```elixir
-iex> CssParser.parse("/non/existing/file.css", source: :file)
-     [error: "File /non/existing/file.css" not found."]
+iex> CssParser.parse("/non/existing/file.css")
+     "No such file or directory"
 ```
 
 ## Installation
