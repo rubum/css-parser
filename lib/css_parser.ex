@@ -134,7 +134,7 @@ defmodule CssParser do
   end
 
   # tokenizes css string into the various css selectors e.g. @media, @font-face, @keyframes and elements
-  def tokenize(css) do
+  defp tokenize(css) do
     media =
       Regex.scan(@media_regex, css)
       |> Enum.map(fn media ->
