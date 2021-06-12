@@ -27,9 +27,9 @@ defmodule CssParser do
       iex> CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
       [
         %{
-          "rules" => "color: blue; font-size: 20px;",
-          "selectors" => "h4, h3",
-          "type" => "elements"
+          rules: "color: blue; font-size: 20px;",
+          selectors: "h4, h3",
+          type: "elements"
         }
       ]
 
