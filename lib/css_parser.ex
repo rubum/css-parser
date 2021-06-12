@@ -64,13 +64,13 @@ defmodule CssParser do
       iex> CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
       [
         %{
-          "rules" => "color: blue; font-size: 20px;",
-          "selectors" => "h4, h3",
-          "type" => "elements"
+          rules: "color: blue; font-size: 20px;",
+          selectors: "h4, h3",
+          type: "elements"
         }
       ]
 
-    You can also parse css from a file as follows:
+    You can also parse css from a file as follows to get a string:
 
       iex> CssParser.parse("/path/to/css/file.css")
 
@@ -197,9 +197,9 @@ defmodule CssParser do
   #### After running:
       iex> parsed = CssParser.parse("h4, h3 {color: blue; font-size: 20px;}")
 
-  #### You can then run:
+  #### You can then get a (formatted) string as follows:
       iex> CssParser.to_binary(parsed)
-  This reverts/converts the previous parsed css to binary.
+          "h4, h3 {\n\t\t\tcolor: blue; font-size: 20px;\r\t\t\s}"
   #### The function is especially useful if you need to modify the parsed css structure and then get back a binary.
   """
 
