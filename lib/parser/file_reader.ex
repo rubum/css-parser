@@ -1,12 +1,17 @@
 defmodule CssParser.File  do
   @moduledoc """
-   File reading helper for css parsing.
+   File reading and formating helper for the css parser.
   """
 
-  def parse_from_file(path) do
-    case File.read(path) do
-      {:ok, file} -> CssParser.parse(file)
-      {:error, _} -> [{:error, "File #{path} not found."}]
-    end
+  @file_regex ~r/(?:^\/\w)(.*)|(?:^\w+\/)(.*)([^{}[\]]|.$|.css$)/m
+
+  def is_file?(path) do
+    File.regular?(path) or File.dir?(path) or Regex.match?(@file_regex, path)
+  end
+
+  def format(charlist)  do
+    :file.format_error(charlist)
+    |> List.to_string
+    |> String.capitalize
   end
 end

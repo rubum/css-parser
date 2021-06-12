@@ -7,13 +7,15 @@ defmodule CssParser.Cache do
   Create an MD5 hash for indexing parsed data
   """
   @spec hash(String.t()) :: binary()
-  def hash(css), do: :crypto.hash(:md5, css)
+  def hash(string) do
+    :crypto.hash(:md5, string)
+  end
 
   @doc """
-  Get previsously parsed data using a hask of the css string
+  Get previously parsed data using a hash of the css string
   """
 
-  @spec get(binary()) :: {:ok | :error, [] | [term()]}
+  @spec get(binary()) :: {:ok, [map()]} | {:error, []}
   def get(key) do
     if table_exists?(:parsed) do
       do_get(key)
@@ -32,9 +34,12 @@ defmodule CssParser.Cache do
 
   @doc """
   Insert the parsed css into ets cache using hash key of the css string
+  #### Options
+    `returning` - when set to `true` it returns the inserted data,
+     otherwise returns `true`
   """
 
-  @spec save([term()], binary(), [{atom(), any()}]) :: [term()]
+  @spec save([map()], binary(), returning: true | false) :: boolean() | [map()]
   def save(parsed_data, key, returning: true) do
     :ets.insert(:parsed, {key, parsed_data})
     # return the parsed data

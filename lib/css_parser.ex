@@ -1,12 +1,12 @@
 defmodule CssParser do
-  import CssParser.File
+  import  CssParser.File
   alias CssParser.Cache
 
   @moduledoc """
   Provides css parsing in Elixir.
 
-  CssParser is based on css.js (a lightweight, battle tested, fast, css parser in JavaScript)
-  and implemented for Elixir. More information can be found at https://github.com/jotform/css.js.
+  CssParser was inspired by css.js (a lightweight, battle tested, fast, css parser in JavaScript).
+  More information can be found at https://github.com/jotform/css.js.
 
   ### Adding CssParser
 
@@ -29,13 +29,13 @@ defmodule CssParser do
         %{
           "rules" => "color: blue; font-size: 20px;",
           "selectors" => "h4, h3",
-          "type" => "rules"
+          "type" => "elements"
         }
       ]
 
     You can also parse css from a file as follows:
 
-      iex> CssParser.parse("/path/to/css/file", source: :file)
+      iex> CssParser.parse("/path/to/file.css")
 
   #### In a module
     CssParser can be `alias`ed or `import`ed in a module:
@@ -49,14 +49,15 @@ defmodule CssParser do
       end
     end
     ```
+
+  ### Recommendation
+  Enusure your css is valid to get valid results. Garbage in (maybe) garbage out.
+  Kindly suggest improvements.
   """
 
   @doc """
   Parses a css string to produce selectors, rules/descriptors and types.
   It first tries to remove css comments that might be in the css string.
-
-  ### Options
-      * `source: :file` - when set specifies the source of the css to be a file in the given string.
 
   ### Examples
 
@@ -65,16 +66,15 @@ defmodule CssParser do
         %{
           "rules" => "color: blue; font-size: 20px;",
           "selectors" => "h4, h3",
-          "type" => "rules"
+          "type" => "elements"
         }
       ]
 
     You can also parse css from a file as follows:
 
-      iex> CssParser.parse("/path/to/css/file", source: :file)
+      iex> CssParser.parse("/path/to/css/file.css")
 
-    In case the file doesn't exist it returns:
-      `[:error, "File /path/to/css/file not found."]`
+    In case the file path is invalid you'll get a relevant message such as `No such file or directory`.
 
   """
 
@@ -84,28 +84,40 @@ defmodule CssParser do
   @keyframe_regex ~r/(\s*(?=\@keyframes|@-webkit-keyframes)(.*?)(\s*\}){2}\s*)+/s
   @element_regex ~r/(?=@media|@keyframe|@-webkit-keyframes|@font-face)(.*?)(\s*\}){2}\s*/s
 
-  @spec parse(String.t(), source: :file) :: [term()] | [{:error, String.t()}]
-  def parse(csstring, opts \\ [])
-  def parse(csstring, _opts) when csstring in ["", nil], do: []
+  @spec parse(binary()) :: [term()] | binary()
+  def parse(string) when string in ["", nil], do: []
 
-  def parse(csstring, opts) do
-    # try getting data from cache else initiliaze it
-    hash_key = Cache.hash(csstring)
+  def parse(string) do
+    if is_file?(string) do
+      parse_from_file(string)
+    else
+      parse_css(string)
+    end
+  end
+
+  defp parse_from_file(string) do
+    case File.read(string) do
+      {:ok, content} -> parse_css(content)
+      {:error, reason} -> format(reason)
+    end
+  end
+
+  defp parse_css(string) do
+    hash_key = Cache.hash(string)
 
     case Cache.get(hash_key) do
-      {:ok, data} ->
-        data
+      {:ok, parsed_data} -> parsed_data
 
       {:error, _} ->
-        csstring
-        |> drop_comments(opts)
-        |> parse_css()
+        string
+        |> drop_comments()
+        |> tokenize()
         |> Cache.save(hash_key, returning: true)
     end
   end
 
   # tries to drop existing comments
-  defp drop_comments(css_string, _opts) do
+  defp drop_comments(css_string) do
     String.split(css_string, "\n", trim: true)
     |> Enum.reduce([], fn line, acc ->
       str =
@@ -122,7 +134,7 @@ defmodule CssParser do
   end
 
   # tokenizes css string into the various css selectors e.g. @media, @font-face, @keyframes and elements
-  def parse_css(css) do
+  def tokenize(css) do
     media =
       Regex.scan(@media_regex, css)
       |> Enum.map(fn media ->
@@ -179,7 +191,6 @@ defmodule CssParser do
     end
   end
 
-  @spec to_binary(any) :: binary
   @doc """
   Converts a parsed css to binary
 
@@ -191,6 +202,8 @@ defmodule CssParser do
   This reverts/converts the previous parsed css to binary.
   #### The function is especially useful if you need to modify the parsed css structure and then get back a binary.
   """
+
+  @spec to_binary([map()]) :: binary()
   def to_binary(parsed_css) do
     Enum.reduce(parsed_css, [], fn  %{type: type, selectors: s} = parsed, acc ->
       case type do
